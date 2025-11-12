@@ -4,6 +4,7 @@ import json
 import datetime
 
 from collections import defaultdict
+from typing import Union
 
 try:
     import aiohttp
@@ -88,12 +89,13 @@ class Cache:
 
 class BaseApiClient: # класс с общими методами для sync, async
 
-    cache = Cache()
     logger = None
 
-    def __init__(self, common_headers: dict={}, cache_response: bool=True) -> None:
+    def __init__(self, common_headers: dict={}, cache_response: bool=True, cache=None) -> None:
         self.common_headers = common_headers
         self.cache_response = cache_response
+
+        self.cache = Cache() if cache is None else cache
 
     @staticmethod
     def log_response(response: ApiResponse) -> None:
@@ -109,12 +111,12 @@ class AsyncApiClient(BaseApiClient):
 
     available = AIOHTTP_INSTALLED
 
-    def __init__(self, common_headers={}, cache_response: bool=True):
+    def __init__(self, common_headers={}, cache_response: bool=True, cache: Cache=None):
 
         if not AsyncApiClient.available:
             raise Exception("You are trying to use async api client but aiohttp is not installed! It's not gonna work!")
 
-        super().__init__(common_headers, cache_response)
+        super().__init__(common_headers, cache_response, cache)
 
     async def _request(self, request: ApiRequest) -> ApiResponse:
         response: ApiResponse = None
@@ -158,8 +160,8 @@ class AsyncApiClient(BaseApiClient):
 
 class SyncApiClient(BaseApiClient):
 
-    def __init__(self, common_headers={}, cache_response: bool=True):
-        super().__init__(common_headers, cache_response)
+    def __init__(self, common_headers={}, cache_response: bool=True, cache: Cache=None):
+        super().__init__(common_headers, cache_response, cache)
 
     def _request(self, request: ApiRequest) -> ApiResponse:
         response: ApiResponse = None
@@ -204,3 +206,11 @@ class SyncApiClient(BaseApiClient):
         response = self._request(ApiRequest(url, 'list', {**headers, **self.common_headers}))
 
         return response
+    
+def sync_async_clients_fabric() -> tuple[SyncApiClient, AsyncApiClient]:
+
+    cache_obj = Cache()
+    sync_client = SyncApiClient(cache=cache_obj)
+    async_client = AsyncApiClient(cache=cache_obj)
+
+    return sync_client, async_client

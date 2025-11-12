@@ -1,5 +1,5 @@
 import inspect
-from vaulboros.api_client import SyncApiClient, AsyncApiClient, ApiResponse
+from vaulboros.api_client import SyncApiClient, AsyncApiClient, ApiResponse, sync_async_clients_fabric
 
 class VaultResponse:
 
@@ -41,8 +41,8 @@ class Headers:
             return_header = None
         return return_header
     
-    # def __repr__(self) -> str:
-    #     return str(self.sync_client_headers)
+    def __repr__(self) -> str:
+        return str(self.sync_client_headers)
 
 class BaseApi: # базовый класс для API
         
@@ -51,8 +51,7 @@ class BaseApi: # базовый класс для API
                     sync_client: SyncApiClient=None, async_client: AsyncApiClient=None, headers=None):
 
         self.vault_url = vault_url
-        self.__sync_client = sync_client if sync_client is not None else SyncApiClient()
-        self.__async_client = async_client if async_client is not None else AsyncApiClient() if AsyncApiClient.available else False
+        self.__sync_client, self.__async_client = sync_async_clients_fabric()
 
         self.headers = headers if headers is not None else Headers(self.__sync_client, self.__async_client)
 
