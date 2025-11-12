@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vaulboros"
-version = "0.1.2"
+version = "0.1.3"
 authors = [
-  { name="Danil Skichko", email="ayonglad@yandex.ru" },
+  { name="Danil Skichko", email="ayounglad@yandex.ru" },
 ]
 description = "High level API library for HashiCorp Vault with sync / async support"
 readme = "README.md"
