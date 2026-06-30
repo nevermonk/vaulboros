@@ -306,20 +306,37 @@ class KvApi(BaseApi):
 
         return location_obj
 
-    def __get_create_secret_request_params(self):
-        pass
+    def _get_create_secret_request_params(self, secret_obj:KvSecret) -> dict: # url и тело запроса для записи секрета
+        return dict(
+            url=f"{self.vault_url}/v1/{self.name}/{secret_obj.inner_path}",
+            data=json.dumps(secret_obj.data)
+        )
 
-    def create_secret(self):
-        pass
+    def _post_process_create_secret_response(self, secret_obj:KvSecret, response: ApiResponse) -> KvSecret:
+        if response.status_code in (200, 204):
+            secret_obj.not_found = False
 
-    async def a_create_secret(self):
-        pass
+        secret_obj.api_response = response
+        return secret_obj
 
-    def update_secret(self):
-        self.create_secret()
+    @secret_engine_obj_unification(KvSecret)
+    @check_secret_engine_obj_path
+    def create_secret(self, secret_obj:Union[str,KvSecret]) -> VaultResponse:
+        secret_response: ApiResponse = self._post(**self._get_create_secret_request_params(secret_obj))
+        return VaultResponse(secret_response, self._post_process_create_secret_response(secret_obj, secret_response))
 
-    async def a_update_secret(self):
-        await self.a_create_secret()
+    @BaseApi.async_unavailable_fallback('create_secret')
+    @secret_engine_obj_unification(KvSecret)
+    @check_secret_engine_obj_path
+    async def a_create_secret(self, secret_obj:Union[str,KvSecret]) -> VaultResponse:
+        secret_response: ApiResponse = await self._a_post(**self._get_create_secret_request_params(secret_obj))
+        return VaultResponse(secret_response, self._post_process_create_secret_response(secret_obj, secret_response))
+
+    def update_secret(self, secret_obj:Union[str,KvSecret]) -> VaultResponse:
+        return self.create_secret(secret_obj)
+
+    async def a_update_secret(self, secret_obj:Union[str,KvSecret]) -> VaultResponse:
+        return await self.a_create_secret(secret_obj)
 
     def __get_delete_secret_request_params(self):
         pass
@@ -349,4 +366,10 @@ class Kv2Api(KvApi):
     def _post_process_get_secret_response(self, secret_obj: KvSecret, response: ApiResponse) -> KvSecret:
         secret_obj.update_from_get_kv2_api_response(response)
 
-        return secret_obj 
+        return secret_obj
+
+    def _get_create_secret_request_params(self, secret_obj: KvSecret) -> dict: # kv v2 пишет в /data/ и оборачивает данные в {"data": ...}
+        return dict(
+            url=f"{self.vault_url}/v1/{self.name}/data/{secret_obj.inner_path}",
+            data=json.dumps({"data": secret_obj.data})
+        )

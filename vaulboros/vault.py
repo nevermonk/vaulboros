@@ -67,6 +67,37 @@ class Vault:
         
         kv_secret_response = kv_api.get_secret(secret)
         return self.__post_process_get_kv_secret(kv_secret_response, not_found_ok)
+
+    def __build_kv_secret_for_write(self, secret:Union[str,KvSecret], data:dict=None) -> KvSecret: # подготовка объекта секрета к записи
+        if type(secret) is not KvSecret:
+            secret = KvSecret(secret)
+        if data is not None:
+            secret.data = data
+        return secret
+
+    def __post_process_create_kv_secret(self, secret_vault_response: VaultResponse) -> KvSecret:
+        result: KvSecret = secret_vault_response.result
+
+        if secret_vault_response.api_response.status_code in (200, 204):
+            return result
+        elif secret_vault_response.api_response.status_code in (403, 401):
+            raise Exception(f"Permission denied writing secret {result.path}. {secret_vault_response.api_response}")
+        else:
+            raise Exception(f"Failed to write secret {result.path}. {secret_vault_response.api_response}")
+
+    def create_kv_secret(self, secret:Union[str,KvSecret], data:dict=None) -> KvSecret:
+        secret = self.__build_kv_secret_for_write(secret, data)
+        kv_api = self.__get_api_instance_for_kv_object(secret)
+
+        kv_secret_response = kv_api.create_secret(secret)
+        return self.__post_process_create_kv_secret(kv_secret_response)
+
+    async def a_create_kv_secret(self, secret:Union[str,KvSecret], data:dict=None) -> KvSecret:
+        secret = self.__build_kv_secret_for_write(secret, data)
+        kv_api = self.__get_api_instance_for_kv_object(secret)
+
+        kv_secret_response = await kv_api.a_create_secret(secret)
+        return self.__post_process_create_kv_secret(kv_secret_response)
     
     def __get_locations_secret_map(self, secrets:list[KvSecret], min_secrets_for_location_mapping:int) -> dict[str, KvLocation]:
         
